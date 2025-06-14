@@ -1,0 +1,2 @@
+- audits: reports on the status of the codebase, outlining the need (if any) for improvements, e.g. performance audit, code quality audit, etc
+- guides: documentation explaining any aspect of the codebase
