@@ -1,4 +1,3 @@
-
 ```sh
 # Sync develop with upstream
 git fetch upstream && git checkout develop && git merge upstream/develop && git push origin develop
@@ -8,4 +7,6 @@ ngrok http 80 --host-header="gigadb.gigasciencejournal.com" --url=live-mildly-co
 
 # watch and rebuild less files
 env "PATH=$PATH" chokidar "less/**/*.less" -c "docker-compose run --rm less"
-```
+
+# Delete all PHP migration data files
+find protected/migrations/data -type f -name '*.php' -delete
