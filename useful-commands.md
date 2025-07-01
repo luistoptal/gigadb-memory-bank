@@ -10,3 +10,8 @@ env "PATH=$PATH" chokidar "less/**/*.less" -c "docker-compose run --rm less"
 
 # Delete all PHP migration data files
 find protected/migrations/data -type f -name '*.php' -delete
+
+# provision terraform
+cd ops/infrastructure/envs/staging/
+../../../scripts/tf_init.sh --project gigascience/forks/luis-gigadb-website --env staging --region eu-central-1 --ssh-key ~/.ssh/aws-gigadb-eu-central-1-luis.pem --web-ec2-type t3.small --bastion-ec2-type t3.small
+# GITLAB_USERNAME=luis.martinez8251635
