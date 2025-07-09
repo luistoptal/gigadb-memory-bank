@@ -1,112 +1,132 @@
-# Outline – Issue 152: Create a Simplified Dataset View
+# Outline – Issue 152: Create a Simplified (Print) Dataset View
 
 ## 1. Objective
-Provide a printable, content-focused version of each dataset page that shows only key information and omits bulky layout elements.
+Deliver a printer-friendly, content-focused view of every dataset page that users can easily toggle on/off via the URL query string. The view hides chrome (header, footer, sidebar) and shows only essential dataset information.
 
-## 2. Format Decision (see decision record `152-decision-html-page-format.md`)
-* Implement as an **HTML page** served at `/dataset/<id>/simplified` (exact Yii route name TBD).
+## 2. Approach & Format
+* **Reuse the existing dataset page** – no new Yii action or route is added.
+* Toggling is driven by the query parameter `?print=true`.
+  * If present, a `print` CSS class is added to `<body>` (done client-side via a tiny JS snippet executed at page load).
+  * All styling/visibility changes are handled via CSS (screen & `@media print`).
+* Future review item: if this proves too limiting, revisit generating a dedicated page – **flagged _to-be-reviewed_**.
 
 ## 3. Scope & Displayed Elements
-Render the following (in order):
-1. DOI
-2. Release date
-3. Title
-4. Citation information (including RIS / BibTeX / Text links)
-5. Data types
-6. Keywords
-7. Dataset summary (abstract)
-8. Links (all categories)
-9. Related manuscripts
-10. Resource accessions
-11. Funding information
-12. Samples information – basic table (columns: `sample_id`, `species_id`, … ?) **→ Table inclusion volume still unresolved – see §7**
-13. Files information – basic table (columns: `file_name`, `file_location`, `description`, `type`, `format`, `size`, `release_date`, `attributes`) **→ Table inclusion volume still unresolved – see §7**
-14. Licence
+* In print mode, all the content in the dataset page is displayed, except for the common layout elements (header, footer, etc).
+* In print mode, dynamic controls are NOT displayed: Table settings dialog
+* In print mode, tabs widget is not displayed, and instead the tab panel content is displayed all at once as regular page sections
+* In print mode, 3D Models and 3D Sketchfab tab content is not displayed
 
-## 4. Routing & Access Control
-* New action `DatasetController::actionSimplified($id)` (Yii 1.1).
-* Enforce same access rules as normal dataset pages (respect embargo/private flags).
+## 4. Toggle Mechanism & Routing
+* Button/link labelled **“Print view”** is added to the top-right of the dataset content area (near the dataset title, right aligned).
+* Clicking the button appends `?print=true` to the current URL (`url.searchParams.set`) and uses jquery to toggle the `print` class on the `<body>` tag.
+  * Note: button click does not reload the page, because page load is slow
+  * Note: if the user manually refreshes the page with `?print=true` in the URL, the page will load with the print view
+* While `print=true` is present:
+  * The button label switches to **“Web view”** which removes the param and reloads.
+  * `<body>` receives class `print`.
+  * Header, footer and any non-essential UI elements are hidden.
+* Access control is unchanged – users must have permission to view the dataset.
 
-## 5. Rendering Strategy
-* Reuse existing partials / view fragments where possible.
-* Add a dedicated simplified `layout` stripping header, footer, sidebars.
-* Provide `@media print` CSS to deliver clean, white-background printable output.
+## 5. Stylesheet Strategy
+* **File structure & load order**
+  * `less/pages/dataset.less` – existing web-view rules, unchanged.
+  * `less/pages/dataset-print.less` – new file imported **after** the web file inside `less/index.less` so its rules cascade last.
+* **Scoping**
+  * All overrides live under `body.print` (and `@media print`) selectors, so they affect nothing until the class is present.
+* **Key rules inside `dataset-print.less`**
+  ```less
+  body.print {
+    header,
+    footer,
+    .tabs,
+    .table-settings-dialog,
+    .sketchfab-3d,
+    .model-3d {
+      display: none !important;
+    }
 
-## 6. "Simplified view" Link Placement
-* Add a small textual link near the **top-right of the dataset content area**, matching `simplified-link-location.jpg`.
+    .dataset-view-container {
+      max-width: 100%;
+    }
 
-## 7. Outstanding Question – Samples & Files Tables
-* How many rows to display if there are hundreds of entries?
-  * ❓ **Decision pending**: full table vs first N rows vs omit entirely.
-  * Decision: Omit tables entirely for now, they can be added back later if desired
+    .tab-content {
+      display: block;
+    }
+  }
 
-## 8. Accessibility
-* Follow WCAG 2.2 AA: semantic headings, alt-text for images, sufficient colour contrast.
+  @media print {
+    a:after { content: " (" attr(href) ")"; font-size:90%; }
+  }
+  ```
+  These concise rules hide page chrome, reveal all tab-panel content, and enhance print readability without touching the normal view.
+* **Why not disable the web CSS?**
+  Overriding a handful of selectors is far simpler and safer than loading a separate bundle. New web-only styles automatically ignore print mode unless a developer intentionally adds a `.print` override.
+* **JavaScript helper**
+  A ≤10-line inline script (bundled with the print-toggle partial) checks `url.searchParams.has('print')` on load, toggles `body.print`, and handles button clicks that add/remove the param without reloading the page.
 
-## 9. Print Optimisation
-* Use print-specific CSS to:
-  * Hide navigation/UI chrome.
-  * Ensure tables and long URLs wrap gracefully.
-  * Display hyperlink URLs inline (so printed page contains visible addresses).
+## 6. Link Placement
+* Inside `.dataset-view-container` header region, right-aligned.
+* Uses existing button styling; adds class `simplified-view-link` for overrides if needed.
 
-## 10. Acceptance Criteria
-* Given a dataset page, when the user clicks "Simplified", they are routed to `/dataset/<id>/simplified`.
-* Only the elements listed in §3 are visible.
-* The link is placed per §6.
-* Page passes axe-core with zero critical violations.
-* Print preview shows clean layout without nav bars.
-* Access control matches the main dataset page.
-* Unit/functional tests cover:
-  * Controller route returns 200 for public dataset.
-  * Asserts DOM contains expected sections but not hidden elements.
+## 7. Samples & Files Table Pagination – _TBD_
+* Current decision: **show all rows** while requirement is under review.
+* If future perf/usability issues arise, revisit options (first-N rows + link, or omit entirely).
 
-## 11. Non-Goals / Out of Scope
-* Generating RTF, PDF, or other download formats.
-* Refactoring existing dataset view code outside what is necessary for reuse.
-* Performance optimisation beyond reasonable view caching.
+## 8. Accessibility & Print Enhancements
+* WCAG 2.2 AA compliance.
+* Ensure sufficient colour contrast after chrome removal.
+* `aria-label` on toggle button clarifies purpose (e.g. “Switch to print view”).
+* Tables retain `<thead>` / `<th>` semantics for screen readers.
 
-## 12. Codebase Review – Relevant Files & Code Sections
+## 9. Acceptance Criteria
+* GIVEN a dataset page WHEN user clicks “Print view” THEN URL gains `?print=true`, page reloads, header/footer are hidden, and only sections listed in §3 are visible.
+* GIVEN print view WHEN user clicks “Web view” THEN page returns to normal view.
+* GIVEN `?print=true` WHEN user invokes browser print preview THEN layout is clean and free of navigation UI.
+* Page passes axe-core with **zero critical violations**.
 
-Below is a first-pass map of where the current codebase already covers, or will need to be extended for, the simplified dataset view.  Line numbers are from the current `develop` branch and are provided so the team can jump straight to the right spots.
+## 10. Implementation Checklist
+- [ ] Create reusable partial `_printToggle.php` that renders the Print/Web button and embeds the inline jquery / JS helper
+- [ ] Embed the partial near the dataset title in `protected/views/dataset/view.php`.
+- [ ] Create `less/pages/dataset-print.less` **and import it after** `dataset-web.less` in `less/index.less`; rebuild assets.
+- [ ] Hide chrome and adjust typography in `.print` rules.
+- [ ] Verify header/footer/tabs/3D panels are hidden in print mode.
+- [ ] Append URLs to links in `@media print`.
+- [ ] Verify long tables render within printable page width.
+- [ ] Update translation strings if needed.
 
-* **protected/controllers/DatasetController.php**
-  * ```24:33``` &nbsp;`accessRules()` – currently allows `view`, `mockup`; we must add `simplified` so anyone can request the print view.
-  * ```38:46``` &nbsp;`actions()` – registers custom child actions; if we opt for an **inline** `actionSimplified()` method we can skip this, otherwise we'd add a new entry here.
-  * **New method** to insert after the existing `actionView()` (~`165:`) to render the stripped-down page.
+## 11. Test Plan
+### Automated (Codeception functional test)
+1. Request `/dataset/101001?print=true` – expect HTTP 200.
+2. Assert that `header` and `footer` elements are not present in DOM.
+3. Assert that DOI and Title are present.
+4. Assert toggle button reads “Web view”.
 
-* **protected/config/main.php**
-  * ```157:164``` – URL-manager rules block. Add the higher-priority rule:
-    ```php
-    '/dataset/<id:\\d+>/simplified' => 'dataset/simplified/id/<id>',
-    ```
-    Place it before the generic `/dataset/<id>` rule so it is matched first.
+### Manual
+1. Run axe-core on both views; confirm zero critical violations.
+2. Trigger browser print preview; visually confirm clean output.
 
-* **protected/views/dataset/view.php**
-  * Around ```20:40``` inside `.dataset-view-container` header. Insert a small `<a>` pointing to `/dataset/<?php echo $model->identifier; ?>/simplified` and style class `simplified-view-link` (per §6 of the outline).
+## 12. Non-Goals
+* Generating RTF/PDF downloads.
+* Server-side cached simplified pages.
+* Refactoring dataset controller beyond minimal JS & view tweaks.
 
-* **protected/views/dataset/simplified.php** *(new file)*
-  * Will reuse the `$assembly` helpers to echo only the sections listed in §3.
-  * Sets `$this->layout = '//layouts/print';` so the pared-down layout is applied.
-  * No interactive widgets → static markup only; keep under ~200 lines.
+## 13. Open Items
+* Row-limit strategy for large tables remains **to be reviewed**.
+* Any required performance optimisations will be evaluated after initial rollout.
 
-* **protected/views/layouts/print.php** *(new file)*
-  * Copy of `layouts/main.php` but with header/footer/sidebar blocks removed.
-  * Add `<link rel="stylesheet" media="print" href="/css/print-simplified.css">`.
+## 14. References & Assets
+* `@print-view-example.jpg` – rough mock-up of expected appearance (June 2025).
+* Original ticket discussion – [Issue #152](https://github.com/gigascience/gigadb-website/issues/152).
 
-* **less/pages/dataset-simplified.less** *(new)*
-  * Houses screen-only tweaks and the `@media print { … }` rules described in §9; import it from `less/index.less`.
+## 15. Codebase Review – Relevant Files
 
-* **tests/functional/DatasetSimplifiedViewCest.php** *(new)*
-  * Playwright or Codeception test ensuring:
-    * Route `/dataset/101001/simplified` returns `200`.
-    * DOM hides navigation and shows only required sections.
+| File | Key Lines | Why it matters |
+| ---- | --------- | -------------- |
+| protected/views/dataset/view.php | 12-18, 270-310 | Main dataset page markup. Lines 12-18 contain the opening `<div class="container dataset-view-container">` where the Print/Web toggle partial will be inserted (§6). Lines 270-310 start the `<ul class="nav nav-tabs ...">` block and subsequent `.tab-content` panels that the print stylesheet will reveal/hide (§3). |
+| protected/views/layouts/main.php | 30-45 | Declares the `<body>` element and renders the shared header & footer partials. The JS helper toggles the `print` class here, and `body.print` rules hide chrome elements (§5). |
+| protected/views/shared/_header.php | 1-EOF | Structural markup for the site header which will be hidden by the `body.print header { display:none }` rule. |
+| protected/views/shared/_footer.php | 1-EOF | Structural markup for the site footer hidden by `body.print footer { display:none }`. |
+| less/pages/dataset.less | 1-168 | Existing web-view styles for the dataset page (e.g., `.dataset-view-container`). Print overrides in `dataset-print.less` will cascade on top when `body.print` is active. |
+| less/index.less | 38-44 | Central Less import list; current `@import "pages/dataset.less";` lives at line 41. A new `@import "pages/dataset-print.less";` line should be added immediately after so print rules load last (§5). |
 
-* **protected/components/DatasetPageAssembly.php** – no changes, but worth noting that its fluent builders (e.g. ```60:140``` setters) already expose the data we need for the simplified template.
-
-### Clarifications (added 2025-06-14)
-
-* **Why the URL rule must be first** – Yii 1 uses *first-match wins* routing. If `/dataset/<id>` is listed before `/dataset/<id>/simplified`, the request `…/simplified` would wrongly fall through to the generic rule and hit `actionView()`. Placing the specific rule first routes it to `actionSimplified()`.
-* **Why rename the layout to `print.php`** – The new layout's sole purpose is to produce a printer-friendly page. Naming it `print.php` signals that intent more clearly than `simplified.php`, while the *view* remains `simplified.php` to mirror the route.
-* **Why add a *functional* test (`DatasetSimplifiedViewCest.php`)** – Functional tests hit the Yii app without a real browser, letting us quickly assert that the `/simplified` route returns `200` and that the stripped DOM shows only the expected elements. They run faster than full acceptance (browser) tests yet still cover the behaviour needed here.
-
-*Initial code review added* – 2025-06-14
+_Notes_: No controller logic changes are required. Dynamic controls (table-settings dialogs, 3D tabs, etc.) already exist in `view.php`; they will simply be hidden via new CSS rules.
