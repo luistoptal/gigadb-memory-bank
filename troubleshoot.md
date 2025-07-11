@@ -12,3 +12,10 @@ A:
 
 - direct ssh to bastion: `ssh -i ~/.ssh/aws-gigadb-eu-central-1-luis.pem ec2-user@3.75.156.38`
 - run `databaseReset`
+
+Q: `up.sh` command fails
+
+A: Try:
+
+- delete composer.lock and try up.sh again
+- `docker-compose down -v --remove-orphans`
