@@ -10,6 +10,7 @@ Q: bastion playbook failing (`env OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES ansibl
 
 A:
 
+- having run the above command, then:
 - direct ssh to bastion: `ssh -i ~/.ssh/aws-gigadb-eu-central-1-luis.pem ec2-user@3.75.156.38`
 - run `databaseReset`
 
