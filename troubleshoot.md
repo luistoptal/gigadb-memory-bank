@@ -20,3 +20,12 @@ A: Try:
 
 - delete composer.lock and try up.sh again
 - `docker-compose down -v --remove-orphans`
+
+Q: `env TF_KEY_NAME=private_ip OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES ansible-playbook  -i ../../inventories webapp_playbook.yml -e="gigadb_env=staging"` says `role-secure-docker-daemon` is missing
+
+A: you need to install the role
+
+```sh
+cd ops/infrastructure/envs/staging
+ansible-galaxy install -r ../../infrastructure/requirements.yml`
+```
