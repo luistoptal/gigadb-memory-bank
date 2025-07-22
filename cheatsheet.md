@@ -2,7 +2,7 @@
 
 ## Access dockerized local DB
 
-- Make sure containerized app is running locally (see setup-local-dev.md)
+- Make sure containerized app is running locally
 - Open DBeaver
 - Enter credentials:
   - **Host**: `localhost`
