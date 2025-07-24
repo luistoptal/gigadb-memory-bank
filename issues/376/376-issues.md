@@ -1,3 +1,5 @@
+- this issue reported in staging - i suspect it is unrelated
+
 Refused to load data:,
 (function t() {
     "undefined" == typeof globalThis && (window.globalThis = window);
@@ -49,3 +51,6 @@ Refused to load data:,
         }))
     }
 })() because it does not appear in the script-src directive of the Content Security Policy.
+
+
+- create a project with a logo, then edit the project and replace the logo by a different one. The updated logo is not being added to the file system, and the old logo remains in the file system. Then when the project is being deleted, the old logo is not deleted
